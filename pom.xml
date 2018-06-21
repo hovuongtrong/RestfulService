@@ -5,8 +5,8 @@
 
 	<groupId>com.example</groupId>
 	<artifactId>RestfulService</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
-	<packaging>jar</packaging>
+	<version>1.0</version>
+	<packaging>war</packaging>
 
 	<name>RestfulService</name>
 	<description>Spring Boot + Restful</description>
@@ -43,6 +43,7 @@
 	    <dependency>
 	    	<groupId>org.springframework.boot</groupId>
 	    	<artifactId>spring-boot-starter-tomcat</artifactId>
+	    	<scope>provided</scope>
 	    </dependency>
 	    <dependency>
 	    	<groupId>org.apache.tomcat.embed</groupId>
@@ -57,7 +58,7 @@
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
 		</plugins>
+		
 	</build>
-
 
 </project>

@@ -2,12 +2,11 @@ package com.service.controller;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.StringWriter;
+import java.nio.file.Files;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Scanner;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -15,19 +14,25 @@ import javax.servlet.http.Part;
 
 import org.apache.tomcat.util.http.fileupload.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.RequestEntity;
+import org.springframework.http.ResponseEntity;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
 
 import com.service.dao.PetDAO;
 import com.service.model.Pet;
+import com.service.utils.FileUtils;
 
 @RestController
 public class RESTController {
@@ -71,38 +76,48 @@ public class RESTController {
 	}
 	
 	@RequestMapping("/sendData")
-	public String handleRequestEntity(HttpServletRequest request, HttpServletResponse response) {
-		System.out.println("handleRequestEntity requestClass = "+request.getClass());
+	public ResponseEntity<MultiValueMap<String, Object>> handleRequestEntity(HttpServletRequest request, HttpServletResponse response) {
+		MultiValueMap<String, Object> resp = new LinkedMultiValueMap<String, Object>();
 		if(request instanceof MultipartHttpServletRequest) {
 			MultipartHttpServletRequest multipartRequest = (MultipartHttpServletRequest) request;
+			
 			try {
-		        Iterator<Part> i = multipartRequest.getParts().iterator(); 
+		        Iterator<Part> i = multipartRequest.getParts().iterator();
+		        String folderWork = "C:\\blueway\\work\\";
 		        while(i.hasNext()) { 
 		        	Part part = i.next();
 		            String contentType = part.getContentType();
 		            String name = part.getName();
-		            System.out.println("handleRequestEntity name = "+name+" /contentType = "+contentType);
+		            System.out.println("RESTService.handleRequestEntity PartInfo: name = "+name+" /contentType = "+contentType);
+		            HttpHeaders xHeader = new HttpHeaders();
+	                xHeader.setContentType(FileUtils.getMediaType(contentType));
+	                InputStream inputStreamPart = part.getInputStream();
 		            if(name.indexOf("BWFile") >= 0) {
 		            	String fileName = part.getSubmittedFileName();
-		            	OutputStream output = new FileOutputStream(new File("C:\\blueway\\work\\"+fileName));
-		            	IOUtils.copy(part.getInputStream(), output);
-		            	output.close();
-		            	System.out.println("handleRequestEntity saving "+name+" at C:\\blueway\\work\\"+fileName);
+		            	File f = FileUtils.copyInputStreamToFile(inputStreamPart, folderWork + fileName);
+		            	xHeader.setContentDisposition(ContentDisposition.builder("attachment").filename(fileName).build());
+		            	resp.add(name, new HttpEntity<Object>(Files.readAllBytes(f.toPath()),xHeader));
+		            	//reponseMessage.append("\n- RESTful service received a file "+fileName +" from "+url);
 		            }
 		            else {
-		            	Scanner s = new Scanner(part.getInputStream()).useDelimiter("\\A");
-		            	String result = s.hasNext() ? s.next() : "";
-		            	System.out.println("handleRequestEntity content = "+result);
+		            	String result = FileUtils.readFileToString(inputStreamPart);
+		            	resp.add(name, new HttpEntity<Object>(result,xHeader));
+		            	//reponseMessage.append("\n- RESTful service received a object ("+contentType+")" + result +" from "+url);
 		            }
-		            //}else System.out.println("handleRequestEntity value = "+part.get);
-		           
 		        }
+		        int x = resp.keySet().size();
+		        System.out.println("Response keys = "+ resp.keySet());
+		        if( x > 0) {
+	        		//multi part response
+	        		return new ResponseEntity<MultiValueMap<String, Object>>(resp,HttpStatus.OK);
+		        }else return new ResponseEntity<MultiValueMap<String, Object>>(resp,HttpStatus.BAD_REQUEST);
 			}catch (Exception e) {
-				return "RESTService MultipartHttpServletRequest not have any Part";
+				resp.add("REST Exception", "RESTService.handleRequestEntity MultipartHttpServletRequest not have any Part");
+				return new ResponseEntity<MultiValueMap<String, Object>>(resp,HttpStatus.NO_CONTENT);
 			}
-			return "RESTService got request entity";
 		}
-		return "RESTService not got MultipartHttpServletRequest";
+		return ResponseEntity.status(HttpStatus.EXPECTATION_FAILED).body(resp);
+		//return ResponseEntity.status(HttpStatus.EXPECTATION_FAILED).body("RESTService.handleRequestEntity failure");
 	}
 	
 }
