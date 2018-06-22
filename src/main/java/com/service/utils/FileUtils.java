@@ -6,7 +6,10 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Files;
 import java.util.Scanner;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import javax.servlet.ServletContext;
 
@@ -40,5 +43,21 @@ public class FileUtils {
 		} catch (IOException e) {
 		}
     	return f;
+	}
+	public static boolean addFileToZip(File fZip, File f) {
+		try {
+			ZipOutputStream out = new ZipOutputStream(new FileOutputStream(fZip));
+			ZipEntry e = new ZipEntry(f.getName());
+			out.putNextEntry(e);
+	
+			byte[] data = Files.readAllBytes(f.toPath());
+			out.write(data, 0, data.length);
+			out.closeEntry();
+			out.close();
+			return true;
+		} catch (IOException e) {
+			
+		}
+		return false;
 	}
 }
